@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { BookOpen, Mail, Lock, Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -37,22 +37,15 @@ export default function LoginPage() {
   if (loading) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-purple-50 flex items-center justify-center px-4">
+    <div className="fixed inset-0 bg-gradient-to-br from-brand-50 via-white to-purple-50 flex items-center justify-center px-4 overflow-hidden">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-brand-600 rounded-2xl shadow-lg mb-4">
+          <Link to="/" className="inline-flex items-center justify-center w-14 h-14 bg-brand-600 rounded-2xl shadow-lg mb-4 hover:bg-brand-700 transition">
             <BookOpen size={26} className="text-white" />
-          </div>
+          </Link>
           <h1 className="text-2xl font-bold text-gray-900">Help Center Admin</h1>
           <p className="text-sm text-gray-500 mt-1">Sign in to manage articles and content</p>
-        </div>
-
-        {/* Sample credentials hint */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4">
-          <p className="text-xs text-blue-800 font-medium mb-1">Demo Credentials</p>
-          <p className="text-xs text-blue-600">Email: <span className="font-mono">admin@helpsystem.io</span></p>
-          <p className="text-xs text-blue-600">Password: <span className="font-mono">admin123</span></p>
         </div>
 
         {/* Card */}
@@ -69,7 +62,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@helpsystem.io"
+                  placeholder="Enter Email Address"
                   required
                   autoFocus
                   autoComplete="email"

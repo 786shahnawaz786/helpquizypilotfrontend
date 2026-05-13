@@ -68,9 +68,49 @@ export interface SearchResponse {
   query: string;
 }
 
+export interface CombinedSearchItem {
+  _id: string;
+  type: 'article' | 'category';
+  title: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  category?: { name: string; slug: string };
+}
+
 export interface FeedbackStats {
   helpful: number;
   notHelpful: number;
+  total: number;
+}
+
+export interface FeedbackOverallStats {
+  total: number;
+  unread: number;
+  helpful: number;
+  notHelpful: number;
+}
+
+export type FeedbackStatus = 'unread' | 'read' | 'resolved';
+
+export interface Feedback {
+  _id: string;
+  articleId: {
+    _id: string;
+    title: string;
+    slug: string;
+  } | null;
+  helpful: boolean;
+  comment: string;
+  email: string;
+  status: FeedbackStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FeedbackResponse {
+  data: Feedback[];
   total: number;
 }
 

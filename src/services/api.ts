@@ -5,7 +5,11 @@ import type {
   ArticlesResponse,
   Category,
   SearchResponse,
+  CombinedSearchItem,
   FeedbackStats,
+  FeedbackResponse,
+  FeedbackOverallStats,
+  FeedbackStatus,
   CreateArticlePayload,
   CreateCategoryPayload,
 } from '../types';
@@ -78,6 +82,9 @@ export const searchArticles = (q: string, limit = 10): Promise<SearchResponse> =
 export const getSuggestions = (q: string): Promise<string[]> =>
   http.get<string[]>('/search/suggest', { params: { q } }).then((r) => r.data);
 
+export const combinedSearch = (q: string, limit = 8): Promise<CombinedSearchItem[]> =>
+  http.get<CombinedSearchItem[]>('/search/combined', { params: { q, limit } }).then((r) => r.data);
+
 // ─── Auth ─────────────────────────────────────────────────────────
 
 export const changePassword = (currentPassword: string, newPassword: string) =>
@@ -122,3 +129,20 @@ export const submitFeedback = (
 
 export const getFeedbackStats = (articleId: string): Promise<FeedbackStats> =>
   http.get<FeedbackStats>(`/feedback/article/${articleId}/stats`).then((r) => r.data);
+
+// Admin feedback endpoints
+export const getAllFeedback = (params?: {
+  status?: FeedbackStatus;
+  limit?: number;
+  offset?: number;
+}): Promise<FeedbackResponse> =>
+  http.get<FeedbackResponse>('/feedback', { params }).then((r) => r.data);
+
+export const getFeedbackOverallStats = (): Promise<FeedbackOverallStats> =>
+  http.get<FeedbackOverallStats>('/feedback/stats').then((r) => r.data);
+
+export const updateFeedbackStatus = (id: string, status: FeedbackStatus): Promise<void> =>
+  http.patch(`/feedback/${id}/status`, { status }).then(() => undefined);
+
+export const deleteFeedback = (id: string): Promise<void> =>
+  http.delete(`/feedback/${id}`).then(() => undefined);

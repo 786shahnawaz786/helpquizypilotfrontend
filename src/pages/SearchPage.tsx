@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Search, Clock, ArrowRight } from 'lucide-react';
-import SearchBar from '../components/SearchBar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { searchArticles } from '../services/api';
 import { getCategoryIcon } from '../utils/icons';
@@ -40,11 +39,6 @@ export default function SearchPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Search bar */}
-      <div className="mb-8">
-        <SearchBar initialValue={query} placeholder="Search articles…" />
-      </div>
-
       {/* Query label */}
       {query && (
         <p className="text-sm text-gray-500 mb-6">

@@ -1,18 +1,41 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Search, BookOpen, Menu, X, LogOut, UserCircle, LayoutDashboard } from 'lucide-react';
-import { getSuggestions } from '../services/api';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Search, BookOpen, Menu, X, LogOut, UserCircle, LayoutDashboard, FileText } from 'lucide-react';
+import { combinedSearch } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { getCategoryIcon } from '../utils/icons';
+import type { CombinedSearchItem } from '../types';
 
 export default function Header() {
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [results, setResults] = useState<CombinedSearchItem[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { isAdmin, user, logout } = useAuth();
+
+  // Show search bar on scroll (only on homepage, always show on other pages)
+  const isHomePage = location.pathname === '/';
+
+  useEffect(() => {
+    if (!isHomePage) {
+      setShowSearch(true);
+      return;
+    }
+
+    const handleScroll = () => {
+      // Show search after scrolling past hero section (approx 250px)
+      setShowSearch(window.scrollY > 250);
+    };
+
+    handleScroll(); // Check initial state
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isHomePage]);
 
   const handleLogout = () => {
     logout();
@@ -22,7 +45,7 @@ export default function Header() {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false);
+        setShowResults(false);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -32,26 +55,26 @@ export default function Header() {
   const handleQueryChange = (val: string) => {
     setQuery(val);
     clearTimeout(debounceRef.current);
-    if (val.length < 2) { setSuggestions([]); return; }
+    if (val.length < 2) {
+      setResults([]);
+      setShowResults(false);
+      return;
+    }
     debounceRef.current = setTimeout(async () => {
-      const s = await getSuggestions(val).catch(() => []);
-      setSuggestions(s);
-      setShowSuggestions(s.length > 0);
+      const res = await combinedSearch(val, 6).catch(() => []);
+      setResults(res);
+      setShowResults(res.length > 0);
     }, 250);
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (query.trim()) {
-      setShowSuggestions(false);
-      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+  const pickResult = (item: CombinedSearchItem) => {
+    setQuery('');
+    setShowResults(false);
+    if (item.type === 'category') {
+      navigate(`/category/${item.slug}`);
+    } else {
+      navigate(`/articles/${item.slug}`);
     }
-  };
-
-  const pickSuggestion = (s: string) => {
-    setQuery(s);
-    setShowSuggestions(false);
-    navigate(`/search?q=${encodeURIComponent(s)}`);
   };
 
   return (
@@ -68,43 +91,61 @@ export default function Header() {
             </span>
           </Link>
 
-          {/* Search bar */}
-          <div ref={wrapperRef} className="flex-1 max-w-xl relative">
-            <form onSubmit={handleSearch}>
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => handleQueryChange(e.target.value)}
-                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                  placeholder="Search articles…"
-                  className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:bg-white transition"
-                />
-              </div>
-            </form>
-            {showSuggestions && (
+          {/* Search bar - shown on scroll or on non-home pages */}
+          <div
+            ref={wrapperRef}
+            className={`flex-1 max-w-md relative transition-all duration-300 ${
+              showSearch ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
+            }`}
+          >
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => handleQueryChange(e.target.value)}
+                onFocus={() => results.length > 0 && setShowResults(true)}
+                placeholder="Search articles & categories…"
+                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-full bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:bg-white transition"
+              />
+            </div>
+            {showResults && showSearch && (
               <ul className="absolute top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
-                {suggestions.map((s) => (
-                  <li key={s}>
-                    <button
-                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 flex items-center gap-2"
-                      onClick={() => pickSuggestion(s)}
-                    >
-                      <Search size={13} className="text-gray-400 shrink-0" />
-                      {s}
-                    </button>
-                  </li>
-                ))}
+                {results.map((item) => {
+                  const IconComponent = item.type === 'category' ? getCategoryIcon(item.icon || 'Folder') : FileText;
+                  return (
+                    <li key={item._id}>
+                      <button
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-brand-50 hover:text-brand-700 flex items-center gap-2"
+                        onClick={() => pickResult(item)}
+                      >
+                        <span
+                          className="w-6 h-6 rounded flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: item.type === 'category' ? `${item.color}20` : '#f3f4f6' }}
+                        >
+                          <IconComponent
+                            size={12}
+                            style={{ color: item.type === 'category' ? item.color : '#6b7280' }}
+                          />
+                        </span>
+                        <span className="flex-1 truncate">{item.title}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                          item.type === 'category' 
+                            ? 'bg-purple-100 text-purple-700' 
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {item.type === 'category' ? 'Category' : 'Article'}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
 
           {/* Nav links */}
           <nav className="hidden md:flex items-center gap-1">
-            <Link to="/" className="text-sm text-gray-600 hover:text-brand-600 px-3 py-1.5 rounded-md hover:bg-brand-50 transition">
-              Home
-            </Link>
             {isAdmin && (
               <div className="flex items-center gap-1 border-l border-gray-200 ml-1 pl-2">
                 <div className="flex items-center gap-1.5 text-xs text-gray-500 px-2 py-1.5">
@@ -142,7 +183,6 @@ export default function Header() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white px-4 py-3 space-y-1">
-          <Link to="/" onClick={() => setMenuOpen(false)} className="block text-sm text-gray-700 hover:text-brand-600 py-2">Home</Link>
           {isAdmin && (
             <>
               <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-sm text-gray-700 hover:text-brand-600 py-2">Admin Panel</Link>

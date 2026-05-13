@@ -8,14 +8,6 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { getCategories, getPopularArticles } from '../services/api';
 import type { Category, Article } from '../types';
 
-const POPULAR_SEARCHES = [
-  'create a quiz',
-  'Shopify integration',
-  'embed quiz',
-  'Klaviyo sync',
-  'recommendation logic',
-];
-
 export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [popular, setPopular] = useState<Article[]>([]);
@@ -44,18 +36,6 @@ export default function HomePage() {
             Find answers, guides, and step-by-step tutorials for QuizyPilot.
           </p>
           <SearchBar large placeholder="Search articles, guides, and tutorials…" />
-          <div className="flex flex-wrap justify-center gap-2 mt-5">
-            <span className="text-xs text-brand-300 mr-1">Popular:</span>
-            {POPULAR_SEARCHES.map((s) => (
-              <Link
-                key={s}
-                to={`/search?q=${encodeURIComponent(s)}`}
-                className="text-xs bg-white/10 hover:bg-white/20 text-white rounded-full px-3 py-1 transition"
-              >
-                {s}
-              </Link>
-            ))}
-          </div>
         </div>
       </section>
 

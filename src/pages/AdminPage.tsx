@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import {
   Plus, Trash2, Edit3, Eye, Save, X, BookOpen, FolderOpen, Clock, Loader2,
   KeyRound, CheckCircle, AlertCircle, Settings2, Search, ChevronLeft, ChevronRight,
+  MessageSquare, ThumbsUp, ThumbsDown, Mail, ExternalLink, Check,
 } from 'lucide-react';
 import {
   getArticles, getCategories, getArticleBySlug, createArticle, updateArticle,
   deleteArticle, createCategory, deleteCategory, changePassword,
+  getAllFeedback, getFeedbackOverallStats, updateFeedbackStatus, deleteFeedback,
 } from '../services/api';
-import type { ArticleListItem, Category, CreateArticlePayload, CreateCategoryPayload } from '../types';
+import type { ArticleListItem, Category, CreateArticlePayload, CreateCategoryPayload, Feedback, FeedbackStatus, FeedbackOverallStats } from '../types';
 import { getCategoryIcon } from '../utils/icons';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ImageUploader from '../components/ImageUploader';
@@ -17,7 +19,7 @@ import DeleteModal from '../components/DeleteModal';
 import { ToastContainer, useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 
-type Tab = 'articles' | 'categories' | 'settings';
+type Tab = 'articles' | 'categories' | 'feedback' | 'settings';
 
 const ICONS = ['BookOpen', 'Rocket', 'PenTool', 'ShoppingBag', 'Users', 'Plug', 'BarChart2', 'Globe', 'CreditCard'];
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#06b6d4', '#64748b'];
@@ -71,11 +73,17 @@ export default function AdminPage() {
   // Delete confirmation modal
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
-    type: 'article' | 'category';
+    type: 'article' | 'category' | 'feedback';
     id: string;
     name: string;
     loading: boolean;
   }>({ open: false, type: 'article', id: '', name: '', loading: false });
+
+  // Feedback
+  const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
+  const [feedbackStats, setFeedbackStats] = useState<FeedbackOverallStats | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackFilter, setFeedbackFilter] = useState<FeedbackStatus | ''>('');
 
   const loadData = async () => {
     setLoading(true);
@@ -88,7 +96,24 @@ export default function AdminPage() {
     setLoading(false);
   };
 
+  const loadFeedback = async () => {
+    setFeedbackLoading(true);
+    try {
+      const [fb, stats] = await Promise.all([
+        getAllFeedback({ status: feedbackFilter || undefined, limit: 100 }),
+        getFeedbackOverallStats(),
+      ]);
+      setFeedbackList(fb.data);
+      setFeedbackStats(stats);
+    } catch {
+      // ignore
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
   useEffect(() => { loadData(); }, []);
+  useEffect(() => { if (tab === 'feedback') loadFeedback(); }, [tab, feedbackFilter]);
 
   // ── Articles ──────────────────────────────────────────────────────
 
@@ -206,17 +231,36 @@ export default function AdminPage() {
     setDeleteModal({ open: true, type: 'category', id, name: c?.name ?? 'this category', loading: false });
   };
 
+  const handleDeleteFeedback = (id: string) => {
+    setDeleteModal({ open: true, type: 'feedback', id, name: 'this feedback', loading: false });
+  };
+
+  const handleMarkFeedback = async (id: string, status: FeedbackStatus) => {
+    try {
+      await updateFeedbackStatus(id, status);
+      toast.success(`Feedback marked as ${status}.`);
+      loadFeedback();
+    } catch {
+      toast.error('Failed to update feedback status.');
+    }
+  };
+
   const confirmDelete = async () => {
     setDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       if (deleteModal.type === 'article') {
         await deleteArticle(deleteModal.id);
         toast.success('Article deleted successfully.');
-      } else {
+        await loadData();
+      } else if (deleteModal.type === 'category') {
         await deleteCategory(deleteModal.id);
         toast.success('Category deleted successfully.');
+        await loadData();
+      } else if (deleteModal.type === 'feedback') {
+        await deleteFeedback(deleteModal.id);
+        toast.success('Feedback deleted successfully.');
+        await loadFeedback();
       }
-      await loadData();
       setDeleteModal((prev) => ({ ...prev, open: false, loading: false }));
     } catch (err: any) {
       const msg = err?.response?.data?.message;
@@ -259,7 +303,7 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
-        {(['articles', 'categories', 'settings'] as Tab[]).map((t) => (
+        {(['articles', 'categories', 'feedback', 'settings'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -269,6 +313,7 @@ export default function AdminPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
+            {t === 'feedback' && <MessageSquare size={14} />}
             {t === 'settings' && <Settings2 size={14} />}
             {t}
           </button>
@@ -750,6 +795,164 @@ export default function AdminPage() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* ── Feedback tab ─────────────────────────────────────────── */}
+      {tab === 'feedback' && (
+        <div>
+          {/* Stats row */}
+          {feedbackStats && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 text-gray-500 mb-1">
+                  <MessageSquare size={14} />
+                  <span className="text-xs">Total Feedback</span>
+                </div>
+                <p className="text-2xl font-bold text-gray-900">{feedbackStats.total}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 text-amber-500 mb-1">
+                  <AlertCircle size={14} />
+                  <span className="text-xs">Unread</span>
+                </div>
+                <p className="text-2xl font-bold text-amber-600">{feedbackStats.unread}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 text-green-500 mb-1">
+                  <ThumbsUp size={14} />
+                  <span className="text-xs">Helpful</span>
+                </div>
+                <p className="text-2xl font-bold text-green-600">{feedbackStats.helpful}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 text-red-500 mb-1">
+                  <ThumbsDown size={14} />
+                  <span className="text-xs">Not Helpful</span>
+                </div>
+                <p className="text-2xl font-bold text-red-600">{feedbackStats.notHelpful}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Filter */}
+          <div className="flex items-center justify-between mb-4">
+            <select
+              value={feedbackFilter}
+              onChange={(e) => setFeedbackFilter(e.target.value as FeedbackStatus | '')}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand-400"
+            >
+              <option value="">All Feedback</option>
+              <option value="unread">Unread</option>
+              <option value="read">Read</option>
+              <option value="resolved">Resolved</option>
+            </select>
+            <p className="text-sm text-gray-500">{feedbackList.length} feedback items</p>
+          </div>
+
+          {/* Feedback list */}
+          {feedbackLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={24} className="animate-spin text-brand-500" />
+            </div>
+          ) : feedbackList.length === 0 ? (
+            <div className="text-center py-12 bg-white border border-gray-200 rounded-xl">
+              <MessageSquare size={32} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-sm text-gray-500">No feedback yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {feedbackList.map((fb) => (
+                <div
+                  key={fb._id}
+                  className={`bg-white border rounded-xl p-4 ${
+                    fb.status === 'unread' ? 'border-amber-200 bg-amber-50/30' : 'border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      {/* Article link */}
+                      {fb.articleId ? (
+                        <Link
+                          to={`/articles/${fb.articleId.slug}`}
+                          className="text-sm font-medium text-brand-600 hover:text-brand-800 flex items-center gap-1 mb-2"
+                        >
+                          {fb.articleId.title}
+                          <ExternalLink size={12} />
+                        </Link>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic mb-2">Article deleted</p>
+                      )}
+
+                      {/* Helpful badge */}
+                      <div className="flex items-center gap-2 mb-2">
+                        {fb.helpful ? (
+                          <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 rounded-full px-2 py-0.5">
+                            <ThumbsUp size={11} /> Helpful
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-700 rounded-full px-2 py-0.5">
+                            <ThumbsDown size={11} /> Not Helpful
+                          </span>
+                        )}
+                        <span className={`text-xs rounded-full px-2 py-0.5 ${
+                          fb.status === 'unread' ? 'bg-amber-100 text-amber-700' :
+                          fb.status === 'read' ? 'bg-blue-100 text-blue-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {fb.status}
+                        </span>
+                      </div>
+
+                      {/* Comment */}
+                      {fb.comment && (
+                        <p className="text-sm text-gray-700 mb-2">"{fb.comment}"</p>
+                      )}
+
+                      {/* Email & date */}
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
+                        {fb.email && (
+                          <a href={`mailto:${fb.email}`} className="flex items-center gap-1 hover:text-brand-600">
+                            <Mail size={11} /> {fb.email}
+                          </a>
+                        )}
+                        <span>{new Date(fb.createdAt).toLocaleDateString()} {new Date(fb.createdAt).toLocaleTimeString()}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {fb.status !== 'read' && (
+                        <button
+                          onClick={() => handleMarkFeedback(fb._id, 'read')}
+                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition"
+                          title="Mark as read"
+                        >
+                          <Eye size={14} />
+                        </button>
+                      )}
+                      {fb.status !== 'resolved' && (
+                        <button
+                          onClick={() => handleMarkFeedback(fb._id, 'resolved')}
+                          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-md transition"
+                          title="Mark as resolved"
+                        >
+                          <Check size={14} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteFeedback(fb._id)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition"
+                        title="Delete feedback"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
