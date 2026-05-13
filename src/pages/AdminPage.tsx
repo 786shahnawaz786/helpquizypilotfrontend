@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus, Trash2, Edit3, Eye, Save, X, BookOpen, FolderOpen, Clock, Loader2,
@@ -12,6 +12,7 @@ import type { ArticleListItem, Category, CreateArticlePayload, CreateCategoryPay
 import { getCategoryIcon } from '../utils/icons';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ImageUploader from '../components/ImageUploader';
+import MarkdownEditor from '../components/MarkdownEditor';
 import DeleteModal from '../components/DeleteModal';
 import { ToastContainer, useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
@@ -53,8 +54,6 @@ export default function AdminPage() {
   const [articleSaving, setArticleSaving] = useState(false);
   const [articleError, setArticleError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
-  // Ref to the content textarea for cursor-aware image insertion
-  const contentRef = useRef<HTMLTextAreaElement>(null);
 
   // Category form
   const [showCatForm, setShowCatForm] = useState(false);
@@ -173,30 +172,6 @@ export default function AdminPage() {
     setArticleForm(emptyArticle);
     setTagsRaw('');
     setArticleError('');
-  };
-
-  // Insert markdown at the current cursor position in the content textarea
-  const insertAtCursor = (markdown: string) => {
-    const el = contentRef.current;
-    if (!el) {
-      setArticleForm((prev) => ({ ...prev, content: prev.content + '\n' + markdown + '\n' }));
-      return;
-    }
-    const start = el.selectionStart ?? el.value.length;
-    const end = el.selectionEnd ?? el.value.length;
-    const before = el.value.slice(0, start);
-    const after = el.value.slice(end);
-    // Ensure the image is on its own line
-    const prefix = before.length > 0 && !before.endsWith('\n') ? '\n' : '';
-    const suffix = after.length > 0 && !after.startsWith('\n') ? '\n' : '';
-    const newContent = before + prefix + markdown + suffix + after;
-    setArticleForm((prev) => ({ ...prev, content: newContent }));
-    // Restore focus and move cursor after inserted text
-    requestAnimationFrame(() => {
-      el.focus();
-      const pos = start + prefix.length + markdown.length + suffix.length;
-      el.setSelectionRange(pos, pos);
-    });
   };
 
   const handleDeleteArticle = (id: string) => {
@@ -395,22 +370,19 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-medium text-gray-600 flex items-center gap-2">
-                      Content (Markdown) *
-                      {formLoading && <span className="text-brand-500 font-normal">Loading…</span>}
-                    </label>
-                    {/* Image insert toolbar */}
-                    <ImageUploader onInsert={insertAtCursor} />
-                  </div>
-                  <textarea
-                    ref={contentRef}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-400 resize-y font-mono"
-                    rows={12}
+                  <label className="text-xs font-medium text-gray-600 flex items-center gap-2 mb-1">
+                    Content (Markdown) *
+                    {formLoading && <span className="text-brand-500 font-normal">Loading…</span>}
+                  </label>
+                  <MarkdownEditor
                     value={articleForm.content}
-                    onChange={(e) => setArticleForm({ ...articleForm, content: e.target.value })}
+                    onChange={(content) => setArticleForm({ ...articleForm, content })}
                     placeholder={'# Your article heading\n\nWrite in Markdown…'}
+                    rows={12}
                     disabled={formLoading}
+                    renderToolbarExtra={(insertAtCursor) => (
+                      <ImageUploader onInsert={insertAtCursor} />
+                    )}
                   />
                 </div>
 

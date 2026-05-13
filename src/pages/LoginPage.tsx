@@ -48,6 +48,13 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500 mt-1">Sign in to manage articles and content</p>
         </div>
 
+        {/* Sample credentials hint */}
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4">
+          <p className="text-xs text-blue-800 font-medium mb-1">Demo Credentials</p>
+          <p className="text-xs text-blue-600">Email: <span className="font-mono">admin@helpsystem.io</span></p>
+          <p className="text-xs text-blue-600">Password: <span className="font-mono">admin123</span></p>
+        </div>
+
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
           <form onSubmit={handleSubmit} className="space-y-5">

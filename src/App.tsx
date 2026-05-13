@@ -44,8 +44,8 @@ export default function App() {
             </Routes>
           </main>
           <footer className="border-t border-gray-200 bg-white py-6 text-center text-xs text-gray-400">
-            © {new Date().getFullYear()} QuizCommerce · Help Center ·
-            <a href="mailto:support@quizcommerce.io" className="ml-1 hover:text-brand-600 transition">support@quizcommerce.io</a>
+            © {new Date().getFullYear()} QuizyPilot · Help Center ·
+            <a href="mailto:info@quizypilot.com" className="ml-1 hover:text-brand-600 transition">info@quizypilot.com</a>
           </footer>
         </div>
       </BrowserRouter>

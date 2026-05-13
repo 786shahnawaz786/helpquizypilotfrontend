@@ -41,7 +41,7 @@ export default function HomePage() {
             How can we help you?
           </h1>
           <p className="text-brand-200 mb-8 text-base">
-            Find answers, guides, and step-by-step tutorials for QuizCommerce.
+            Find answers, guides, and step-by-step tutorials for QuizyPilot.
           </p>
           <SearchBar large placeholder="Search articles, guides, and tutorials…" />
           <div className="flex flex-wrap justify-center gap-2 mt-5">
@@ -102,7 +102,7 @@ export default function HomePage() {
             Our support team is here to help. Reach out and we'll get back to you within one business day.
           </p>
           <a
-            href="mailto:support@quizcommerce.io"
+            href="mailto:info@quizypilot.com"
             className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition"
           >
             Contact Support <ArrowRight size={14} />
