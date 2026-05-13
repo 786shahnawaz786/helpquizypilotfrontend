@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Clock } from 'lucide-react';
+import { Clock, ArrowLeft } from 'lucide-react';
 import Breadcrumb from '../components/Breadcrumb';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { getCategoryBySlug, getArticlesByCategory } from '../services/api';
@@ -41,6 +41,15 @@ export default function CategoryPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      {/* Back button */}
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-600 transition mb-4"
+      >
+        <ArrowLeft size={16} />
+        Back to Help Center
+      </Link>
+
       <Breadcrumb crumbs={[{ label: category.name }]} />
 
       {/* Category header */}
